@@ -1,2 +1,4 @@
 openai 
 python-docx 
+requests 
+beautifulsoup4
