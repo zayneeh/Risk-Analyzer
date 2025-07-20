@@ -128,45 +128,6 @@ Each analyzed section contains:
   - Missing elements that may trigger RFE
   - Suggestions to strengthen the section
 
----
-
-## Why Use DeepSeek LLM?
-
-- Open-source and free to use  
-- Runs locally — no internet or API key needed  
-- Strong performance for legal-style feedback  
-- Compatible with Ollama on Windows, macOS, and Linux
-
----
-
-## Troubleshooting
-
-| Problem                          | Suggested Fix                                               |
-|----------------------------------|-------------------------------------------------------------|
-| `ollama not recognized`          | Ensure Ollama is installed and your terminal was restarted |
-| Model isn’t responding           | Make sure `ollama run deepseek-llm:7b` is still running     |
-| Output file not created          | Ensure the petition isn’t empty and has section headers     |
-| Python crashes or lags           | Close unused apps — you may be low on memory (8 GB minimum) |
-| Getting coder model responses    | Double-check you're using `deepseek-llm:7b`, not `deepseek-coder` |
-
----
-
-## Future Plans
-
-- Add support for `.pdf` petitions  
-- Allow toggling between multiple LLMs (e.g. DeepSeek vs LLaMA)  
-- Add prediction confidence scores  
-- Suggest templates for missing sections
-
----
-
-## Disclaimer
-
-This tool is intended for educational and research use only.  
-It does **not** provide legal advice and should not be relied on for official immigration decisions.  
-Always consult a licensed immigration attorney before submitting your petition.
-
----
 
 ## Credits
 
