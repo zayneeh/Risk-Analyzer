@@ -1,8 +1,7 @@
 import os
 from src.parser import extract_text_from_docx, segment_by_criteria, classify_criteria
 from src.report_generator import generate_report
-from src.risk_detector import analyze_section_with_openai
-
+from src.risk_detector import analyze_section_with_llama as analyze_section
 def main():
     # Load OpenAI API key from environment variable
     openai_key = os.getenv("OPENAI_API_KEY")
@@ -30,7 +29,8 @@ def main():
             continue  # Skip empty sections
 
         criteria = classify_criteria(section_name)
-        llm_feedback = analyze_section_with_openai(content, criteria)
+        llm_feedback = analyze_section(content, criteria)
+
 
         analyzed_data.append({
             "section": section_name,

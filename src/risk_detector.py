@@ -1,69 +1,42 @@
-import openai
-import os
+# src/mistral_decision.py
 
-# Set your API key from environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+import ollama
 
-# Basic USCIS EB-1A Criteria descriptions for LLM grounding
 CRITERIA_DESCRIPTIONS = {
-    "Criterion 1": "National or international prizes/awards for excellence.",
-    "Criterion 2": "Membership in associations requiring outstanding achievement.",
-    "Criterion 3": "Published material about the individual in major media or professional publications.",
-    "Criterion 4": "Participation as a judge of the work of others in the field.",
-    "Criterion 5": "Original contributions of major significance in the field.",
-    "Criterion 6": "Authorship of scholarly articles.",
-    "Criterion 7": "Work displayed at exhibitions or showcases.",
-    "Criterion 8": "Leading or critical role in distinguished organizations.",
-    "Criterion 9": "High salary or remuneration compared to peers.",
-    "Criterion 10": "Commercial success in the performing arts.",
-    "Supporting Letters": "Recommendation letters from experts or collaborators.",
-    "General Background": "Background and personal information about the petitioner."
+    "Criterion 4: Critical Role": "Evidence of a leading or critical role in distinguished organizations.",
+    "Criterion 6: Original Contributions": "Evidence of original contributions of major significance.",
+    "Criterion 2: Judging": "Participation as a judge of the work of others.",
+    "Criterion 7: Media Coverage": "Evidence of published media coverage about the individual.",
+    "Supporting Letters": "Recommendation letters supporting eligibility for EB-1A.",
+    "General Background": "General background or personal bio."
 }
 
-def analyze_section_with_openai(section_text, criterion_label):
-    """
-    Uses OpenAI GPT-4 to analyze a section of a petition and assess RFE risk.
-
-    Args:
-        section_text (str): The text from one section of the petition.
-        criterion_label (str): One of the USCIS EB-1A criteria labels.
-
-    Returns:
-        str: Bullet-point analysis from the AI reviewer.
-    """
-
-    criterion_description = CRITERIA_DESCRIPTIONS.get(criterion_label, "General supporting evidence.")
+def analyze_section_with_llama(section_text, criterion_label):
+    criterion_description = CRITERIA_DESCRIPTIONS.get(criterion_label, "General background evidence.")
 
     prompt = f"""
-You are acting as a USCIS adjudicator and immigration legal expert.
-Your task is to evaluate whether the following petition excerpt satisfies the EB-1A immigration criterion: "{criterion_label}".
+You are simulating a USCIS adjudicator reviewing an EB-1A petition.
 
-📝 Criterion Definition:
-"{criterion_description}"
+Criterion:
+{criterion_label}
 
-📄 Petition Excerpt:
+Definition:
+{criterion_description}
+
+Petition Excerpt:
 \"\"\"
 {section_text}
 \"\"\"
 
-Based on USCIS standards, answer the following:
-1. Does the evidence clearly meet the criterion?
-2. What (if anything) is weak or missing?
-3. How could this be improved to avoid an RFE?
+Instructions:
+- Does this meet the criterion?
+- What's missing?
+- Suggest improvements.
 
-Provide your answer in clear, structured bullet points with legal reasoning.
+Reply in bullet points.
 """
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",  # You can use "gpt-3.5-turbo" for cost/speed tradeoffs
-            messages=[
-                {"role": "system", "content": "You are a legal assistant for U.S. immigration attorneys."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.4,
-            max_tokens=500
-        )
-        return response["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"[Error generating OpenAI response: {e}]"
+    response = ollama.chat(model="llama3", messages=[
+        {"role": "user", "content": prompt}
+    ])
+    return response["message"]["content"]
