@@ -25,7 +25,7 @@ Risk-Analyzer/
 │   └── rfe_risk_report.docx   # Final Word report with feedback
 ├── src/
 │   ├── parser.py              # Handles file reading and sectioning
-│   ├── deepseek_decision.py  # Uses DeepSeek-LLM to analyze each section
+│   ├── risk_detector.py  # Uses DeepSeek-LLM to analyze each section
 │   └── report_generator.py   # Generates and formats the output report
 ├── requirements.txt           # Python dependencies
 └── README.md
