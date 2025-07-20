@@ -20,7 +20,7 @@
 Risk-Analyzer/
 ├── main.py                    # Main orchestrator script
 ├── sample_data/
-│   └── sample_petition.docx   # Petition input file (editable by you)
+│   └── sample_petition.docx   # Petition input file 
 ├── outputs/
 │   └── rfe_risk_report.docx   # Final Word report with feedback
 ├── src/
