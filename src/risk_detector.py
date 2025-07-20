@@ -1,42 +1,40 @@
-# src/mistral_decision.py
-
 import ollama
 
 CRITERIA_DESCRIPTIONS = {
+    "Criterion 2: Judging": "Participation as a judge of the work of others in the same or related field.",
     "Criterion 4: Critical Role": "Evidence of a leading or critical role in distinguished organizations.",
     "Criterion 6: Original Contributions": "Evidence of original contributions of major significance.",
-    "Criterion 2: Judging": "Participation as a judge of the work of others.",
-    "Criterion 7: Media Coverage": "Evidence of published media coverage about the individual.",
-    "Supporting Letters": "Recommendation letters supporting eligibility for EB-1A.",
-    "General Background": "General background or personal bio."
+    "Criterion 7: Media Coverage": "Evidence of published material in major media about the individual.",
+    "Supporting Letters": "Recommendation letters supporting eligibility.",
+    "General Background": "General background and personal bio information."
 }
 
-def analyze_section_with_llama(section_text, criterion_label):
-    criterion_description = CRITERIA_DESCRIPTIONS.get(criterion_label, "General background evidence.")
+def analyze_section_with_deepseek(section_text, criterion_label):
+    criterion_description = CRITERIA_DESCRIPTIONS.get(criterion_label, "General supporting evidence.")
 
     prompt = f"""
-You are simulating a USCIS adjudicator reviewing an EB-1A petition.
+You are simulating a USCIS EB-1A petition adjudicator.
 
-Criterion:
+📘 Criterion:
 {criterion_label}
 
-Definition:
+📖 Definition:
 {criterion_description}
 
-Petition Excerpt:
+📄 Petition Excerpt:
 \"\"\"
 {section_text}
 \"\"\"
 
 Instructions:
-- Does this meet the criterion?
-- What's missing?
-- Suggest improvements.
+- Does this section meet the criterion?
+- What's weak or missing?
+- Suggest improvements or documentation that would help.
 
-Reply in bullet points.
+Reply in clear bullet points.
 """
 
-    response = ollama.chat(model="llama3", messages=[
+    response = ollama.chat(model="deepseek-llm:7b", messages=[
         {"role": "user", "content": prompt}
     ])
     return response["message"]["content"]
