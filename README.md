@@ -1,7 +1,7 @@
 # Risk-Analyzer
 
 
-**VisaCompanion** is a local tool that helps legal professionals and EB-1A petitioners identify weaknesses in their immigration petition drafts before submission. It simulates a USCIS adjudicator’s feedback using a lightweight open-source language model — **mistral** — running locally via **Ollama**.
+**VisaCompanion** is a local tool that helps legal professionals and EB-1A petitioners identify weaknesses in their immigration petition drafts before submission. It simulates a USCIS adjudicator’s feedback using a lightweight open-source language model **mistral**  running locally via **Ollama**.
 
 ---
 
@@ -9,7 +9,7 @@
 
 - AI-powered analysis of EB-1A petition content  
 - Section-by-section feedback modeled after USCIS RFE criteria  
-- Professional `.docx` report generation  
+- 📄 Supports `.docx`, `.pdf`, and `.txt` files  
 - Runs entirely offline — no internet or API keys required
 
 ---
@@ -18,17 +18,20 @@
 
 ```
 Risk-Analyzer/
-├── main.py                    # Main orchestrator script
-├── sample_data/
-│   └── sample_petition.docx   # Petition input file 
-├── outputs/
-│   └── rfe_risk_report.docx   # Final Word report with feedback
+├── main.py # Analyzer pipeline
+├── scraper.py # Downloads USCIS, AAO, Reddit data
+├── sample_data/ # Petition input file(s)
+├── outputs/ # Final Word report + chart
+├── knowledge_base/
+│ ├── raw/aao/ # Downloaded AAO decision PDFs
+│ └── processed/ # Extracted JSON knowledge
 ├── src/
-│   ├── parser.py              # Handles file reading and sectioning
-│   ├── risk_detector.py  # Uses DeepSeek-LLM to analyze each section
-│   └── report_generator.py   # Generates and formats the output report
-├── requirements.txt           # Python dependencies
+│ ├── parser.py
+│ ├── risk_detector.py
+│ └── report_generator.py
+├── requirements.txt
 └── README.md
+
 ```
 
 ---
@@ -44,6 +47,16 @@ Risk-Analyzer/
 
 ## Setup Instructions
 
+
+
+### Step 1: Build the Knowledge Base
+
+Before you run the analyzer, you **must scrape** the official EB-1A resources into the local knowledge base.
+
+```bash
+python scraper.py
+```
+
 ### 1. Install Ollama
 
 Download the installer from:  
@@ -52,7 +65,7 @@ Install and restart your terminal (or PowerShell) afterward.
 
 ---
 
-### 2. Pull the DeepSeek LLM
+### 2. Pull the Mistral LLM
 
 In your terminal or PowerShell, run:
 
@@ -131,6 +144,7 @@ Each analyzed section contains:
 
 ## Credits
 
-- [DeepSeek LLM](https://huggingface.co/deepseek-ai)  
-- [Ollama](https://ollama.com/)  
+
+- [Ollama](https://ollama.com) 
+- [Mistral](https://ollama.com/library/mistral) 
 - [USCIS EB-1A Policy Manual](https://www.uscis.gov/policy-manual/volume-6-part-f-chapter-2)

@@ -1,4 +1,3 @@
-openai 
 python-docx 
 requests 
 beautifulsoup4
@@ -6,3 +5,9 @@ Pypdf2
 matplotlib
 pandas
 numpy
+PyMuPDF
+scikit-learn
+tqdm
+pdfplumber
+python-dotenv
+
