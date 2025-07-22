@@ -1,7 +1,6 @@
 .env
 __pycache__
 *.pyc
-*.docx
 *.json
 *.pdf
 
