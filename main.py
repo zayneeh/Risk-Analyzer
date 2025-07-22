@@ -1,7 +1,7 @@
 import os
 from src.parser import extract_text, segment_by_criteria, classify_criteria, extract_declared_field
 from src.report_generator import generate_report
-from src.risk_detector import analyze_section_with_deepseek, check_letter_similarity
+from src.risk_detector import analyze_section_with_deepseek, check_letter_similarity, detect_field_inconsistencies
 
 def main():
     input_path = "sample_data/main.pdf"
@@ -40,14 +40,15 @@ def main():
             "excerpt": content[:300] + "..." if len(content) > 300 else content,
             "llm_feedback": result["llm_feedback"],
             "reviewer_voice": result["reviewer_voice"],
-            "buzzwords": result["buzzwords"]
+            "buzzwords": result["buzzwords"],
+            "suggested_language": result.get("suggested_language", "")
         })
 
     print("🔁 Checking for duplicated recommendation letters...")
     similar_letters = check_letter_similarity(sections)
 
     print("⚠️ Checking for field of expertise inconsistencies...")
-    field_conflict = len(declared_fields) > 1
+    conflicting_fields = detect_field_inconsistencies(sections)
 
     print("📝 Generating final DOCX report...")
     generate_report(
@@ -55,7 +56,7 @@ def main():
         output_path=output_path,
         extra_notes={
             "similar_letters": similar_letters,
-            "conflicting_fields": list(declared_fields) if field_conflict else []
+            "conflicting_fields": [f"{s}: {f}" for s, f in conflicting_fields] if conflicting_fields else []
         }
     )
 
