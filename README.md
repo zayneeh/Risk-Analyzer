@@ -49,7 +49,7 @@ Risk-Analyzer/
 
 
 
-### Step 1: Build the Knowledge Base
+### Build the Knowledge Base
 
 Before you run the analyzer, you **must scrape** the official EB-1A resources into the local knowledge base.
 
@@ -99,16 +99,8 @@ This will install all dependencies .
 
 ### Step 1: Add Your Petition Draft
 
-Save your `.docx` petition draft inside the `sample_data/` folder.  
-Make sure the document has clear headings like:
+Save your `.docx` or `.pdf` petition draft inside the `sample_data/` folder.  
 
-```
-Original Contributions  
-Judging  
-Critical Role  
-Media Coverage  
-Recommendation Letters
-```
 
 ### Step 2: Run the Script
 
