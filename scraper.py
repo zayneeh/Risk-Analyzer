@@ -40,7 +40,7 @@ def scrape_uscis_policy():
 
     with open(os.path.join(PROCESSED_DIR, "uscis_policy.json"), "w", encoding="utf-8") as f:
         json.dump(sections, f, indent=2, ensure_ascii=False)
-    print(f"✅ Extracted {len(sections)} USCIS policy sections.")
+    print(f"...Extracted {len(sections)} USCIS policy sections.")
 
 # 2️⃣ AAO PDF download and extraction
 def scrape_aao_pdfs():
@@ -78,7 +78,7 @@ def scrape_aao_pdfs():
     with open(os.path.join(PROCESSED_DIR, "aao_decisions.json"), "w", encoding="utf-8") as f:
         json.dump(decisions, f, indent=2, ensure_ascii=False)
 
-    print(f"✅ Processed {len(decisions)} AAO decisions.")
+    print(f"...Processed {len(decisions)} AAO decisions.")
 
 
 def scrape_reddit_web():
@@ -95,7 +95,7 @@ def scrape_reddit_web():
             }
             
             response = requests.get(url, headers=headers)
-            print(f"Reddit web response for r/{sub}: {response.status_code}")
+            print(f"...Reddit web response for r/{sub}: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
@@ -114,14 +114,14 @@ def scrape_reddit_web():
                 print(f"  Found {sub_posts} posts in r/{sub}")
                     
         except Exception as e:
-            print(f"⚠️ Web scraping error for r/{sub}: {e}")
+            print(f"Web scraping error for r/{sub}: {e}")
     
     # Save to file
     os.makedirs("knowledge_base/processed", exist_ok=True)
     with open("knowledge_base/processed/reddit_eb1a_posts.json", "w", encoding="utf-8") as f:
         json.dump(posts, f, indent=2, ensure_ascii=False)
     
-    print(f"✅ Saved {len(posts)} Reddit posts to file.")
+    print(f"Saved {len(posts)} Reddit posts to file.")
     return posts
 
 # 🧩 Main orchestrator

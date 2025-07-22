@@ -1,5 +1,4 @@
-import json, ollama
-from pathlib import Path
+import ollama
 
 CRITERIA_DESCRIPTIONS = {
     "Criterion 2: Judging": "Participation as a judge of the work of others in the same or related field.",
@@ -10,42 +9,13 @@ CRITERIA_DESCRIPTIONS = {
     "General Background": "General background and personal bio information."
 }
 
-# Paths to scraped JSON data
-USCIS_PATH = Path("knowledge_base/processed/uscis_policy.json")
-AAO_PATH = Path("knowledge_base/processed/aao_decisions.json")
-REDDIT_PATH = Path("knowledge_base/processed/reddit_eb1a_posts.json")
-
-def load_json(path):
-    return json.load(open(path, encoding="utf-8")) if path.exists() else {}
-
-uscis_data = load_json(USCIS_PATH)
-aao_data = load_json(AAO_PATH)
-reddit_data = load_json(REDDIT_PATH)
-
-# Build context for LLM input
-def get_context_for(criterion):
-    usc_guidance = uscis_data.get(criterion, "")
-    
-    aao_snips = [entry["text_snippet"] for entry in aao_data if criterion.lower().split(":")[1].strip().lower() in entry["text_snippet"].lower()]
-    reddit_snips = [post["text"] for post in reddit_data if criterion.lower().split(":")[1].strip().lower() in post["text"].lower()]
-    
-    aao_block = "\n- " + "\n- ".join(aao_snips[:3]) if aao_snips else "No matching AAO decisions found."
-    reddit_block = "\n- " + "\n- ".join(reddit_snips[:3]) if reddit_snips else "No Reddit examples found."
-
-    return f"""
-📘 USCIS Guidance:
-{usc_guidance}
-
-📑 AAO Denial Samples:
-{aao_block}
-
-💬 Reddit Forum Reports:
-{reddit_block}
-"""
-
 def analyze_section_with_deepseek(section_text, criterion_label):
-    context = get_context_for(criterion_label)
-    criterion_def = CRITERIA_DESCRIPTIONS.get(criterion_label, "General supporting evidence.")
+    print(f"🧠 Prompting DeepSeek for: {criterion_label}")
+
+    criterion_description = CRITERIA_DESCRIPTIONS.get(criterion_label, "General supporting evidence.")
+
+    # Truncate overly long sections (tokens ≈ characters / 4)
+    section_text = section_text[:4000]
 
     prompt = f"""
 You are simulating a USCIS EB-1A petition adjudicator.
@@ -54,25 +24,27 @@ You are simulating a USCIS EB-1A petition adjudicator.
 {criterion_label}
 
 📖 Definition:
-{criterion_def}
+{criterion_description}
 
 📄 Petition Excerpt:
 \"\"\"
 {section_text}
 \"\"\"
 
-📚 Reference Materials:
-{context}
+Instructions:
+- Does this section meet the criterion?
+- What's weak or missing?
+- Suggest improvements or documentation that would help.
 
-🧠 Instructions:
-- Does the excerpt meet the criterion?
-- What’s weak or missing?
-- Suggest improvements or stronger evidence.
-
-Respond in bullet points.
+Reply in clear bullet points.
 """
 
-    response = ollama.chat(model="deepseek-llm:7b", messages=[
-        {"role": "user", "content": prompt}
-    ])
-    return response["message"]["content"]
+    try:
+        response = ollama.chat(model="deepseek-llm:7b", messages=[
+            {"role": "user", "content": prompt}
+        ])
+        print("✅ DeepSeek returned a response.")
+        return response["message"]["content"]
+    except Exception as e:
+        print(f"❌ DeepSeek failed: {e}")
+        return f"⚠️ DeepSeek LLM error: {e}"
