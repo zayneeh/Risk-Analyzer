@@ -1,7 +1,7 @@
 # Risk-Analyzer
 
 
-**VisaCompanion** is a local tool that helps legal professionals and EB-1A petitioners identify weaknesses in their immigration petition drafts before submission. It simulates a USCIS adjudicator’s feedback using a lightweight open-source language model — **DeepSeek LLM 7B** — running locally via **Ollama**.
+**VisaCompanion** is a local tool that helps legal professionals and EB-1A petitioners identify weaknesses in their immigration petition drafts before submission. It simulates a USCIS adjudicator’s feedback using a lightweight open-source language model — **mistral** — running locally via **Ollama**.
 
 ---
 
@@ -57,13 +57,13 @@ Install and restart your terminal (or PowerShell) afterward.
 In your terminal or PowerShell, run:
 
 ```bash
-ollama pull deepseek-llm:7b
+ollama pull mistral
 ```
 
 To start the model, open a **new terminal window** and run:
 
 ```bash
-ollama run deepseek-llm:7b
+ollama run mistral
 ```
 
 Keep this terminal running. It hosts the LLM in the background while your tool runs.
@@ -78,7 +78,7 @@ In your main project folder, run:
 pip install -r requirements.txt
 ```
 
-This will install `python-docx`, which is used to read and generate `.docx` files.
+This will install all dependencies .
 
 ---
 
