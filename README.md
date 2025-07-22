@@ -109,6 +109,7 @@ In your terminal, from the root of the project, run:
 ```bash
 python main.py
 ```
+This will take a whileee
 
 ### Step 3: Review the Results
 
