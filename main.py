@@ -11,7 +11,7 @@ def main():
         print(f"❌ ERROR: Petition file not found at {input_path}")
         return
 
-    print("📄 Reading petition document...")
+    print("📄Reading petition document...")
     raw_text = extract_text(input_path)
 
     print("📚 Segmenting petition by EB-1A criteria...")
