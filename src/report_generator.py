@@ -1,10 +1,30 @@
 from docx import Document
-from docx.shared import Pt, Inches
+from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml.shared import OxmlElement, qn
 from matplotlib import pyplot as plt
 import tempfile
 import os
 import ollama
+from datetime import datetime
+import re
+
+
+def clean_text(text):
+    """
+    Remove null bytes and unsupported control characters for Word docx.
+    This prevents ASCII/Unicode errors when processing PDF-extracted text.
+    """
+    if not text:
+        return ""
+    # Remove null bytes and control characters except newlines and tabs
+    cleaned = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', str(text))
+    # Replace multiple whitespaces with single space
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    # Remove any remaining problematic Unicode characters
+    cleaned = cleaned.encode('utf-8', errors='ignore').decode('utf-8')
+    return cleaned.strip()
 
 
 def run_local_llm(prompt: str) -> str:
@@ -14,72 +34,402 @@ def run_local_llm(prompt: str) -> str:
 
 def generate_report(sections, output_path, extra_notes=None):
     doc = Document()
-
+    
+    # Set document margins and styles
+    _setup_document_styles(doc)
+    
     # Title Page
-    doc.add_heading("EB-1A Petition Risk Analysis Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph("Generated via VisaCompanion Prototype\n", style='Intense Quote').alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_page_break()
-
-    # TOC
-    doc.add_paragraph("Table of Contents", style='Heading 1')
-    doc.add_paragraph("To update links in Word: Right-click and select 'Update Field'.")
-    doc.add_page_break()
-
+    _create_title_page(doc)
+    
+    # Table of Contents
+    _create_table_of_contents(doc, sections)
+    
     # Executive Summary
-    doc.add_heading("Executive Summary", level=1)
-    doc.add_paragraph("This report analyzes the submitted EB-1A petition against recognized criteria. Each section includes a simulated USCIS-style evaluation and suggested improvements. A visual timeline and LLM-generated final assessment are provided.")
-    doc.add_page_break()
-
+    _create_executive_summary(doc, sections)
+    
     # Section-by-Section Feedback
-    risk_scores = {}
-    for entry in sections:
-        doc.add_heading(entry['criteria'], level=2)
-        doc.add_paragraph(entry['excerpt'], style='Quote')
-        doc.add_paragraph(f"Risk Level: {entry['risk']}", style='Intense Quote')
-        doc.add_paragraph("Reviewer Comments:\n" + entry['reviewer_voice'])
-        doc.add_paragraph("Suggested Language:\n" + entry['suggested_language'])
-        if entry['buzzwords']:
-            doc.add_paragraph("Flagged Buzzwords: " + ", ".join(entry['buzzwords']))
-        risk_scores[entry['criteria']] = entry['risk']
-        doc.add_page_break()
-
+    risk_scores = _create_section_analysis(doc, sections)
+    
     # Risk Timeline Chart
-    doc.add_heading("Risk Timeline Chart", level=1)
-    chart_path = _plot_risk_chart(risk_scores)
-    doc.add_picture(chart_path, width=Inches(6))
-    os.remove(chart_path)
-    doc.add_page_break()
-
+    _create_risk_chart_section(doc, risk_scores)
+    
     # Final LLM Risk Assessment
-    doc.add_heading("Final Reviewer Summary", level=1)
-    final_prompt = _build_final_prompt(sections, extra_notes)
-    final_summary = run_local_llm(final_prompt)
-    doc.add_paragraph(final_summary.strip())
-    doc.add_page_break()
-
+    _create_final_assessment(doc, sections, extra_notes)
+    
+    # Appendix (if needed)
+    _create_appendix(doc, extra_notes)
+    
     # Save DOCX
     doc.save(output_path)
+    print(f"Report generated successfully: {output_path}")
+
+
+def _setup_document_styles(doc):
+    """Set up custom styles for the document"""
+    styles = doc.styles
+    
+    # Modify default styles
+    normal_style = styles['Normal']
+    normal_style.font.name = 'Calibri'
+    normal_style.font.size = Pt(11)
+    
+    # Create custom styles
+    try:
+        # Header style
+        header_style = styles.add_style('Custom Header', WD_STYLE_TYPE.PARAGRAPH)
+        header_style.font.name = 'Calibri'
+        header_style.font.size = Pt(14)
+        header_style.font.bold = True
+        header_style.font.color.rgb = RGBColor(0, 51, 102)
+        
+        # Risk highlight style
+        risk_style = styles.add_style('Risk Highlight', WD_STYLE_TYPE.PARAGRAPH)
+        risk_style.font.name = 'Calibri'
+        risk_style.font.size = Pt(11)
+        risk_style.font.bold = True
+        
+        # Quote enhanced
+        quote_style = styles.add_style('Enhanced Quote', WD_STYLE_TYPE.PARAGRAPH)
+        quote_style.font.name = 'Calibri'
+        quote_style.font.size = Pt(10)
+        quote_style.font.italic = True
+        quote_style.font.color.rgb = RGBColor(64, 64, 64)
+        
+    except Exception:
+        pass  # Style might already exist
+
+
+def _create_title_page(doc):
+    """Create professional title page"""
+    # Main title
+    title = doc.add_heading("EB-1A PETITION", 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title.runs[0]
+    title_run.font.size = Pt(24)
+    title_run.font.color.rgb = RGBColor(0, 51, 102)
+    
+    # Subtitle
+    subtitle = doc.add_heading("Risk Analysis Report", 0)
+    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subtitle_run = subtitle.runs[0]
+    subtitle_run.font.size = Pt(18)
+    subtitle_run.font.color.rgb = RGBColor(0, 51, 102)
+    
+    # Add some spacing
+    doc.add_paragraph("")
+    doc.add_paragraph("")
+    
+    # Generated by line
+    generator_info = doc.add_paragraph("Generated by VisaCompanion Prototype")
+    generator_info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    generator_run = generator_info.runs[0]
+    generator_run.font.size = Pt(12)
+    generator_run.font.italic = True
+    
+    # Date
+    date_info = doc.add_paragraph(f"Report Date: {datetime.now().strftime('%B %d, %Y')}")
+    date_info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    date_run = date_info.runs[0]
+    date_run.font.size = Pt(12)
+    
+    # Add disclaimer box
+    doc.add_paragraph("")
+    disclaimer = doc.add_paragraph()
+    disclaimer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    disclaimer_text = disclaimer.add_run("CONFIDENTIAL ANALYSIS\nFor Internal Review Only")
+    disclaimer_text.font.size = Pt(10)
+    disclaimer_text.font.bold = True
+    disclaimer_text.font.color.rgb = RGBColor(128, 0, 0)
+    
+    doc.add_page_break()
+
+
+def _create_table_of_contents(doc, sections):
+    """Create detailed table of contents"""
+    doc.add_heading("Table of Contents", level=1)
+    
+    toc_items = [
+        ("Executive Summary", "3"),
+        ("Section Analysis", "4")
+    ]
+    
+    # Add sections to TOC
+    page_num = 5
+    for section in sections:
+        toc_items.append((f"  • {section['criteria']}", str(page_num)))
+        page_num += 1
+    
+    toc_items.extend([
+        ("Risk Analysis Chart", str(page_num)),
+        ("Final Assessment", str(page_num + 1)),
+        ("Appendix", str(page_num + 2))
+    ])
+    
+    # Create TOC table
+    table = doc.add_table(rows=len(toc_items), cols=2)
+    table.style = 'Light List Accent 1'
+    
+    for i, (item, page) in enumerate(toc_items):
+        row = table.rows[i]
+        row.cells[0].text = item
+        row.cells[1].text = page
+        row.cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    
+    # Instructions
+    doc.add_paragraph("")
+    instruction = doc.add_paragraph("📝 Instructions: In Microsoft Word, right-click on page numbers and select 'Update Field' to refresh page references.")
+    instruction_run = instruction.runs[0]
+    instruction_run.font.size = Pt(9)
+    instruction_run.font.italic = True
+    instruction_run.font.color.rgb = RGBColor(100, 100, 100)
+    
+    doc.add_page_break()
+
+
+def _create_executive_summary(doc, sections):
+    """Create comprehensive executive summary"""
+    doc.add_heading("Executive Summary", level=1)
+    
+    # Overview paragraph
+    overview = doc.add_paragraph(
+        "This comprehensive report provides a detailed risk analysis of the submitted EB-1A petition "
+        "based on established USCIS adjudication criteria. Each section has been evaluated using "
+        "simulated reviewer methodology to identify potential weaknesses and provide actionable recommendations."
+    )
+    
+    # Key statistics
+    doc.add_heading("Analysis Overview", level=2)
+    
+    risk_counts = {"Low": 0, "Medium": 0, "High": 0, "Unknown": 0}
+    for section in sections:
+        # Extract risk from llm_feedback or default to Unknown
+        risk_level = _extract_risk_level(section.get('llm_feedback', ''))
+        if risk_level in risk_counts:
+            risk_counts[risk_level] += 1
+        else:
+            risk_counts["Unknown"] += 1
+    
+    stats_table = doc.add_table(rows=5, cols=2)
+    stats_table.style = 'Light Grid Accent 1'
+    
+    total_sections = len(sections)
+    stats_data = [
+        ("Total Sections Analyzed", str(total_sections)),
+        ("Low Risk Sections", f"{risk_counts['Low']} ({risk_counts['Low']/total_sections*100:.0f}%)" if total_sections > 0 else "0"),
+        ("Medium Risk Sections", f"{risk_counts['Medium']} ({risk_counts['Medium']/total_sections*100:.0f}%)" if total_sections > 0 else "0"),
+        ("High Risk Sections", f"{risk_counts['High']} ({risk_counts['High']/total_sections*100:.0f}%)" if total_sections > 0 else "0"),
+        ("Unassessed Sections", f"{risk_counts['Unknown']} ({risk_counts['Unknown']/total_sections*100:.0f}%)" if total_sections > 0 else "0")
+    ]
+    
+    for i, (label, value) in enumerate(stats_data):
+        stats_table.rows[i].cells[0].text = label
+        stats_table.rows[i].cells[1].text = value
+        stats_table.rows[i].cells[0].paragraphs[0].runs[0].font.bold = True
+    
+    doc.add_paragraph("")
+    
+    # Overall assessment preview
+    if total_sections > 0:
+        if risk_counts['High'] > total_sections * 0.3:
+            assessment = "⚠️ HIGH RISK: Significant issues identified that require immediate attention."
+            color = RGBColor(204, 0, 0)
+        elif risk_counts['Medium'] > total_sections * 0.5:
+            assessment = "⚠️ MODERATE RISK: Several areas need strengthening before submission."
+            color = RGBColor(255, 140, 0)
+        else:
+            assessment = "✅ LOW RISK: Petition appears well-prepared with minor improvements needed."
+            color = RGBColor(0, 128, 0)
+    else:
+        assessment = "⚪ No sections available for assessment."
+        color = RGBColor(128, 128, 128)
+    
+    assessment_para = doc.add_paragraph(f"Overall Assessment: {assessment}")
+    assessment_run = assessment_para.runs[0]
+    assessment_run.font.bold = True
+    assessment_run.font.color.rgb = color
+    
+    doc.add_page_break()
+
+
+def _create_section_analysis(doc, sections):
+    """Create detailed section-by-section analysis"""
+    doc.add_heading("Detailed Section Analysis", level=1)
+    
+    risk_scores = {}
+    
+    for i, entry in enumerate(sections, 1):
+        # Section header with numbering
+        section_title = f"{i}. {entry['criteria']}"
+        doc.add_heading(section_title, level=2)
+        
+        # Extract risk level from LLM feedback or set default
+        risk_level = _extract_risk_level(entry.get('llm_feedback', ''))
+        risk_indicator = {
+            'Low': '🟢 LOW RISK',
+            'Medium': '🟡 MEDIUM RISK',
+            'High': '🔴 HIGH RISK'
+        }.get(risk_level, '⚪ UNKNOWN RISK')
+        
+        risk_para = doc.add_paragraph(f"Risk Assessment: {risk_indicator}")
+        risk_para.style = 'Risk Highlight'
+        
+        # Original excerpt in styled box
+        doc.add_heading("Original Text Excerpt:", level=3)
+        excerpt_para = doc.add_paragraph(f'"{clean_text(entry.get("excerpt", "No excerpt provided"))}"')
+        try:
+            excerpt_para.style = 'Enhanced Quote'
+        except:
+            excerpt_para.style = 'Quote'
+        
+        # LLM Analysis (if available)
+        if entry.get('llm_feedback'):
+            doc.add_heading("AI Analysis:", level=3)
+            llm_text = clean_text(entry.get('llm_feedback', 'No analysis provided'))
+            doc.add_paragraph(llm_text)
+        
+        # Reviewer comments
+        doc.add_heading("USCIS-Style Review Comments:", level=3)
+        reviewer_text = clean_text(entry.get('reviewer_voice', 'No comments provided'))
+        doc.add_paragraph(reviewer_text)
+        
+        # Suggested improvements
+        doc.add_heading("Recommended Improvements:", level=3)
+        suggested_text = clean_text(entry.get('suggested_language', 'No suggestions provided'))
+        improvement_para = doc.add_paragraph(suggested_text)
+        improvement_para.runs[0].font.color.rgb = RGBColor(0, 100, 0)
+        
+        # Flagged buzzwords if any
+        if entry.get('buzzwords'):
+            doc.add_heading("⚠️ Flagged Terms:", level=3)
+            buzzword_para = doc.add_paragraph("The following terms may trigger additional scrutiny: ")
+            buzzword_run = buzzword_para.add_run(", ".join(entry['buzzwords']))
+            buzzword_run.font.bold = True
+            buzzword_run.font.color.rgb = RGBColor(200, 0, 0)
+        
+        risk_scores[entry['criteria']] = risk_level
+        
+        # Add separator line
+        doc.add_paragraph("─" * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        if i < len(sections):  # Don't add page break after last section
+            doc.add_page_break()
+    
+    return risk_scores
+
+
+def _create_risk_chart_section(doc, risk_scores):
+    """Create risk visualization section"""
+    doc.add_heading("Risk Analysis Visualization", level=1)
+    
+    doc.add_paragraph(
+        "The following chart provides a visual overview of risk levels across all analyzed sections. "
+        "This helps identify patterns and prioritize areas for improvement."
+    )
+    
+    try:
+        chart_path = _plot_risk_chart(risk_scores)
+        doc.add_picture(chart_path, width=Inches(6.5))
+        os.remove(chart_path)
+    except Exception as e:
+        doc.add_paragraph(f"Chart generation failed: {str(e)}")
+    
+    doc.add_page_break()
+
+
+def _create_final_assessment(doc, sections, extra_notes):
+    """Create final LLM-generated assessment"""
+    doc.add_heading("Final Reviewer Assessment", level=1)
+    
+    doc.add_paragraph(
+        "The following assessment is generated using advanced language modeling to simulate "
+        "a comprehensive USCIS adjudicator review:"
+    )
+    
+    try:
+        final_prompt = _build_final_prompt(sections, extra_notes)
+        final_summary = run_local_llm(final_prompt)
+        
+        # Add the LLM response in a styled format
+        assessment_para = doc.add_paragraph(clean_text(final_summary.strip()))
+        assessment_para.runs[0].font.size = Pt(11)
+        
+    except Exception as e:
+        doc.add_paragraph(f"Assessment generation failed: {str(e)}")
+    
+    doc.add_page_break()
+
+
+def _create_appendix(doc, extra_notes):
+    """Create appendix with additional information"""
+    doc.add_heading("Appendix", level=1)
+    
+    if extra_notes:
+        if extra_notes.get("similar_letters"):
+            doc.add_heading("Letter Similarity Analysis", level=2)
+            doc.add_paragraph(f"Analysis detected {len(extra_notes['similar_letters'])} recommendation letters with high similarity. This may raise authenticity concerns during review.")
+        
+        if extra_notes.get("conflicting_fields"):
+            doc.add_heading("Field Consistency Review", level=2)
+            fields_text = ", ".join(extra_notes['conflicting_fields'])
+            doc.add_paragraph(f"Multiple expertise fields identified: {fields_text}. Ensure petition maintains consistent narrative focus.")
+    
+    # Add methodology note
+    doc.add_heading("Methodology Note", level=2)
+    doc.add_paragraph(
+        "This analysis uses pattern recognition and language processing to simulate USCIS review criteria. "
+        "While comprehensive, it should be supplemented with professional legal review before final submission."
+    )
+    
+    # Footer information
+    doc.add_paragraph("")
+    footer_para = doc.add_paragraph("Generated by VisaCompanion Prototype | Report Version 2.0")
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_para.runs[0].font.size = Pt(9)
+    footer_para.runs[0].font.italic = True
+    footer_para.runs[0].font.color.rgb = RGBColor(128, 128, 128)
+
 
 def _plot_risk_chart(risk_dict):
+    """Create enhanced risk visualization"""
     levels = {"Low": 1, "Medium": 2, "High": 3}
     items = list(risk_dict.items())
     labels = [i[0] for i in items]
     values = [levels.get(i[1], 0) for i in items]
-
-    plt.figure(figsize=(10, 4))
-    plt.barh(labels, values)
-    plt.title("Section Risk Levels")
-    plt.xlabel("Risk Level")
-    plt.yticks(fontsize=8)
-    tmpfile = tempfile.mktemp(suffix=".png")
+    
+    # Create color mapping
+    colors = ['green' if v == 1 else 'orange' if v == 2 else 'red' for v in values]
+    
+    plt.figure(figsize=(12, max(6, len(labels) * 0.5)))
+    bars = plt.barh(labels, values, color=colors, alpha=0.7)
+    
+    # Enhance chart appearance
+    plt.title("EB-1A Petition Risk Analysis by Section", fontsize=14, fontweight='bold', pad=20)
+    plt.xlabel("Risk Level", fontsize=12)
+    plt.xlim(0, 4)
+    plt.xticks([1, 2, 3], ['Low\n(1)', 'Medium\n(2)', 'High\n(3)'])
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, values):
+        width = bar.get_width()
+        risk_text = {1: 'LOW', 2: 'MED', 3: 'HIGH'}.get(value, '')
+        plt.text(width/2, bar.get_y() + bar.get_height()/2, 
+                risk_text, ha='center', va='center', fontweight='bold', color='white')
+    
+    # Improve layout
     plt.tight_layout()
-    plt.savefig(tmpfile)
+    plt.gca().invert_yaxis()  # Top to bottom ordering
+    
+    # Save to temporary file
+    tmpfile = tempfile.mktemp(suffix=".png")
+    plt.savefig(tmpfile, dpi=300, bbox_inches='tight')
     plt.close()
     return tmpfile
 
+
 def _build_final_prompt(section_data, notes):
+    """Enhanced prompt for final assessment"""
     bullets = "\n".join([
-        f"- {item['criteria']}: {item['risk']}" for item in section_data
+        f"- {item['criteria']}: {_extract_risk_level(item.get('llm_feedback', ''))}" for item in section_data
     ])
     note_summary = ""
     if notes:
@@ -89,15 +439,50 @@ def _build_final_prompt(section_data, notes):
             note_summary += f"\n\nMultiple fields of expertise were found: {', '.join(notes['conflicting_fields'])}"
 
     return f"""
-You are a USCIS adjudicator reviewing an EB-1A petition.
+You are an experienced USCIS adjudicator conducting a comprehensive review of an EB-1A petition for extraordinary ability.
 
-Summarize the overall strengths and weaknesses of the case based on the following risk scores and red flags.
+Based on the detailed analysis below, provide a professional assessment that addresses:
+1. Overall petition strength and likelihood of approval
+2. Primary areas of concern that could trigger RFE or denial
+3. Strategic recommendations for strengthening the case
+4. Timeline considerations and next steps
 
-Risk Summary:
+Risk Assessment Summary:
 {bullets}
 
-Other notes:
-{note_summary}
+Additional Red Flags:{note_summary}
 
-Write a concluding memo-style paragraph that reflects whether the petition is strong overall, borderline, or likely to trigger RFE. Use neutral and factual tone.
+Provide your assessment in a professional, structured format suitable for legal review. Focus on actionable insights and maintain objectivity throughout your evaluation.
 """
+
+
+def _extract_risk_level(llm_feedback):
+    """Extract risk level from LLM feedback text"""
+    if not llm_feedback:
+        return "Unknown"
+    
+    feedback_lower = llm_feedback.lower()
+    
+    # Look for explicit risk level mentions
+    if "high risk" in feedback_lower or "severe" in feedback_lower or "critical" in feedback_lower:
+        return "High"
+    elif "medium risk" in feedback_lower or "moderate" in feedback_lower or "concerning" in feedback_lower:
+        return "Medium" 
+    elif "low risk" in feedback_lower or "minor" in feedback_lower or "acceptable" in feedback_lower:
+        return "Low"
+    
+    # Look for negative indicators that suggest higher risk
+    negative_indicators = ["insufficient", "lacking", "weak", "problematic", "unclear", "vague", "missing"]
+    positive_indicators = ["strong", "compelling", "excellent", "well-documented", "clear", "detailed"]
+    
+    negative_count = sum(1 for indicator in negative_indicators if indicator in feedback_lower)
+    positive_count = sum(1 for indicator in positive_indicators if indicator in feedback_lower)
+    
+    if negative_count > positive_count + 1:
+        return "High"
+    elif negative_count > positive_count:
+        return "Medium"
+    elif positive_count > negative_count:
+        return "Low"
+    
+    return "Medium"  
